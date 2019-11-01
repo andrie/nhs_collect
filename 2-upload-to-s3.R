@@ -58,8 +58,6 @@ new_files
 
 process_csv <- function(x){
   
-  message(x)
-  
   in_file <- tempfile(fileext = ".csv")
   out_file <- tempfile(fileext = ".csv")
   
@@ -69,6 +67,7 @@ process_csv <- function(x){
   })
   
   new_name <- pretty_name(x)
+  message(new_name)
   
   z <- tryCatch(
     download.file(x, destfile = in_file),
@@ -77,8 +76,7 @@ process_csv <- function(x){
   if(inherits(z, "error")) return(data.frame(x = x, results = "download error"))
   
   cmd <- glue::glue("sed 's/, *$//' {in_file} > {out_file}")
-  message(cmd)
-  
+
   z <- tryCatch(
     system(cmd),
     error = function(e)e
@@ -91,13 +89,14 @@ process_csv <- function(x){
       object = glue::glue("practice-level/{new_name}"),
       bucket = "nhs-prescription-data",
       region = "us-west-2",
-      multipart = TRUE
+      multipart = TRUE,
+      show_progress = TRUE
     ),
     error = function(e)e
   )
   if(inherits(z, "error")) return(data.frame(x = x, results = "aws.s3 error"))
   
-  data.frame(x = x, results = "OK")
+  data.frame(x = new_name, results = "OK")
 }
 
 
