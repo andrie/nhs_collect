@@ -18,7 +18,7 @@ extract_csv <- function(x){
 
 # find last modification time of all nhs digital files, then extract folder name
 data_folder <- 
-  fs::dir_info(glob = "digital.nhs.uk-*", recursive = TRUE) %>% 
+  fs::dir_info(glob = "digital.nhs.uk-*.html", recurse = TRUE) %>% 
   filter(modification_time == max(modification_time)) %>% 
   pluck("path") %>% 
   dirname()
@@ -31,7 +31,6 @@ to_extract
 
 
 pretty_name <- function(x){
-  # str_extract(x, "T[[:digit:]]{6}.*.(CSV|csv)") %>% 
   x %>% 
     str_replace("https://.*/", "") %>% 
     str_replace("%20", "_") %>% tolower()
