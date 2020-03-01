@@ -3,15 +3,26 @@ library(purrr)
 library(stringr)
 library(aws.s3)
 library(glue)
+library(fs)
+
+if (Sys.getenv("AWS_ACCESS_KEY_ID") == ""  || Sys.getenv("AWS_SECRET_ACCESS_KEY") == "" ) {
+  stop("You must provide AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables")
+}
 
 extract_csv <- function(x){
-  m <- readLines(x) %>% str_extract("https://.*?.(CSV|csv)")
+  m <- readLines(x) %>% str_extract("https://.*?\\.(CSV|csv)")
   if(all(is.na(m))) return(tibble(file = x, matches = NA))
   z <- m[!is.na(m)]
   tibble(file = x, matches = z)
 }
 
-data_folder <- "digital.nhs.uk-010908"
+# find last modification time of all nhs digital files, then extract folder name
+data_folder <- 
+  fs::dir_info(glob = "digital.nhs.uk-*", recursive = TRUE) %>% 
+  filter(modification_time == max(modification_time)) %>% 
+  pluck("path") %>% 
+  dirname()
+data_folder
 
 to_extract <- list.files(data_folder, full.names = TRUE)
 to_extract
@@ -20,11 +31,13 @@ to_extract
 
 
 pretty_name <- function(x){
-  str_extract(x, "T[[:digit:]]{6}.*.(CSV|csv)") %>% 
+  # str_extract(x, "T[[:digit:]]{6}.*.(CSV|csv)") %>% 
+  x %>% 
+    str_replace("https://.*/", "") %>% 
     str_replace("%20", "_") %>% tolower()
 }
 
-csv_list <- 
+csv_list <-
   list.files(data_folder, full.names = TRUE) %>% 
   map_dfr(extract_csv) %>% 
   filter(
@@ -47,9 +60,9 @@ bucket_list <-
   filter(Size != "0") %>% 
   mutate(filename = gsub("practice-level/", "", Key))
 
-bucket_list
+csv_list$filename %in% bucket_list$filename
 
-new_files <- 
+new_files <-
   csv_list %>% 
   dplyr::anti_join(bucket_list, by = "filename")
 new_files
